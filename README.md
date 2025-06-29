@@ -261,6 +261,67 @@ sudo systemctl restart kubelet
 
 ---
 
+## 📊 Metrics Server Issue (Fix Guide)
+
+### ❌ Problem
+
+If the metrics-server pod shows this:
+
+```bash
+kubectl get pods -n kube-system
+
+...
+metrics-server-xxxx  0/1 Running
+```
+
+And logs show:
+
+```bash
+kubectl logs -n kube-system metrics-server-xxxx
+
+...
+x509: cannot validate certificate for <IP> because it doesn't contain any IP SANs
+```
+
+### 🛠️ Solution: Use Insecure TLS + InternalIP for Kubelet
+
+#### Step 1: Edit the metrics-server deployment
+
+```bash
+kubectl edit deployment metrics-server -n kube-system
+```
+
+Look for the `spec.template.spec.containers[0].args:` section and update it to:
+
+```yaml
+        args:
+          - --cert-dir=/tmp
+          - --secure-port=4443
+          - --kubelet-preferred-address-types=InternalIP
+          - --kubelet-insecure-tls
+```
+
+These flags:
+
+- `--kubelet-insecure-tls`: Skips kubelet TLS verification (required for kubeadm setups)
+- `--kubelet-preferred-address-types=InternalIP`: Use EC2 private IPs instead of hostnames
+
+#### Step 2: Force a rollout restart
+
+```bash
+kubectl rollout restart deployment metrics-server -n kube-system
+```
+
+#### Finally test
+
+```bash
+kubectl get nodes -A
+kubectl top nodes
+kubectl top pods -A
+```
+
+---
+
 ## CNI (Container Network Interface)
 
 CNI stands for Container Network Interface. It's a **standard interface specification** developed by the Cloud Native Computing Foundation (CNCF) that allows different networking solutions (plugins) to integrate with container runtimes (like Kubernetes, containerd, or CRI-O).

@@ -106,7 +106,7 @@ sudo cp -i /etc/kubernetes/admin.conf "$HOME"/.kube/config
 sudo chown "$(id -u)":"$(id -g)" "$HOME"/.kube/config
 export KUBECONFIG=$HOME/.kube/config
 
-echo "Step 5: Apply Flannel Network"
+echo "Step 5: Apply Calico Network"
 
 # Apply Calico CNI
 kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.2/manifests/calico.yaml

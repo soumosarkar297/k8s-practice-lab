@@ -114,4 +114,8 @@ kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.2/
 # Remove control-plane taint so pods can be scheduled
 kubectl taint nodes "$hostname" node-role.kubernetes.io/control-plane:NoSchedule-
 
+echo "Step 6: Install Metrics Server"
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/metrics-server/HEAD/manifests/base/metrics-server-deployment.yaml
+
 echo "Kubernetes cluster setup is complete!"

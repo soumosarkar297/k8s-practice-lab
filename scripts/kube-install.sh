@@ -116,6 +116,6 @@ kubectl taint nodes "$hostname" node-role.kubernetes.io/control-plane:NoSchedule
 
 echo "Step 6: Install Metrics Server"
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/metrics-server/HEAD/manifests/base/metrics-server-deployment.yaml
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
 echo "Kubernetes cluster setup is complete!"

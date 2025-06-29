@@ -1,0 +1,9 @@
+*.tfstate
+*.tfstate.*
+.terraform/
+*.log
+*.pem
+*.pub
+*.bak
+.kube/
+.env

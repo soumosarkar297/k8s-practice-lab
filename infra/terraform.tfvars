@@ -1,0 +1,5 @@
+key_name       = "k8s-key"
+aws_access_key = "YOUR_ACCESS_KEY"
+aws_secret_key = "YOUR_SECRET_KEY"
+region         = "us-east-1"
+ami_id         = "ami-020cba7c55df1f615"

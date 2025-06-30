@@ -322,34 +322,6 @@ kubectl top pods -A
 
 ---
 
-## CNI (Container Network Interface)
-
-CNI stands for Container Network Interface. It's a **standard interface specification** developed by the Cloud Native Computing Foundation (CNCF) that allows different networking solutions (plugins) to integrate with container runtimes (like Kubernetes, containerd, or CRI-O).
-
-- Provisioning and managing an IP address
-- IP-per-container assignment
-
-CNI ensures that when a pod is created:
-
-- It gets a network interface (e.g., eth0).
-- It’s assigned an IP.
-- Routes are added so it can communicate with other pods/services.
-
-> Kubernetes doesn’t handle networking on its own—it delegates it to **CNI plugins** like Flannel, Calico, Weave, etc.
-
-| Feature                  | **Flannel**                                  | **Calico**                                     |
-| ------------------------ | -------------------------------------------- | ---------------------------------------------- |
-| **Type**                 | Overlay network                              | Pure Layer 3 network (no overlay by default)   |
-| **Network Mode**         | VXLAN (default), also supports host-gw       | BGP (default), VXLAN (optional)                |
-| **Performance**          | Moderate (due to encapsulation overhead)     | High (no encapsulation in default mode)        |
-| **Policy Support**       | ❌ Basic or none                             | ✅ Advanced network policy engine              |
-| **Use Case**             | Simpler setups, less need for security rules | Complex clusters with strict security policies |
-| **IPAM (IP Management)** | Basic                                        | Advanced CIDR and IP pool control              |
-| **Firewall Integration** | ❌ Not integrated                            | ✅ Integrates with iptables and eBPF           |
-| **Ease of Setup**        | Very simple to set up                        | Slightly more complex due to policy features   |
-
----
-
 ## Core Concepts Practical
 
 ### View your Kubeconfig file
@@ -503,5 +475,175 @@ kubectl config use-context supersection-context
 kubectl get pods
 kubectl get deploy
 ```
+
+Verify current context:
+
+```bash
+kubectl config current-context
+```
+
+---
+
+## Serviceaccunt Practical
+
+```bash
+kubectl create deployment nginx --image=nginx --dry-run=client -o json > nginx-deploy.json
+
+kubectl create serviceaccount super --namespace default
+
+kubectl create clusterrolebinding super-clusteradmin-binding --clusterrole=cluster-admin --serviceaccount=default:super
+
+TOKEN=$(kubectl create token super)
+
+API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+```
+
+Now let's do the API interaction:
+
+```bash
+curl -X GET ${API_SERVER}/apis/apps/v1/namespaces/default/deployments \
+  -H "Authorization: Bearer $TOKEN" \
+  -k
+
+curl -X GET ${API_SERVER}/api/v1/namespaces/default/pods \
+  -H "Authorization: Bearer $TOKEN" \
+  -k
+
+curl -X POST ${API_SERVER}/apis/apps/v1/namespaces/default/deployments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @nginx-deploy.json \
+  -k
+
+kubectl get deploy
+
+curl -X GET ${API_SERVER}/apis/apps/v1/namespaces/default/deployments \
+  -H "Authorization: Bearer $TOKEN" \
+  -k
+```
+
+---
+
+## Kubernetes Architecture
+
+## Core Components
+
+### 1. API Server (`kube-apiserver`)
+
+The API Server is the front door to your Kubernetes cluster. It’s a RESTful service that processes requests (from `kubectl`, other components, or CI/CD tools).
+
+#### Responsibilities
+
+- **Authentication**: Validates who is making the request (e.g., token, certificate, OIDC).
+
+- **Authorization**: Determines what the authenticated user is allowed to do (via RBAC, ABAC, or Webhooks).
+
+- **Admission Controllers**: Final gatekeepers before persisting objects. They can:
+  - **Validate** requests (e.g., resource quota)
+  - **Mutate** requests (e.g., inject labels, sidecars)
+
+#### How API Server works
+
+1. A request is made to create a pod (`kubectl apply -f pod.yaml`)
+2. User is authenticated with the headers (certs, bearer token) passed
+3. Authorization via RBAC confirms the user has `create` rights on `pods`
+4. Admission Webhooks validate/mutate the pod spec
+5. The request is passed to `etcd` (the storage backend)
+6. The `kube-scheduler` and `kubelet` take action to deploy the pod
+
+### 2. etcd
+
+- **Key-value store** for distributed systems, used as the cluster’s backing store.
+- API Server writes to it.
+- Stores all **cluster state** (nodes, pods, configs, secrets, etc.)
+- Highly available and consistent via the **Raft** consensus algorithm
+
+> 🔐 Secrets are stored here—ensure encryption at rest is enabled.
+
+### 3. Controller Manager
+
+- Contains various **controllers** (e.g., replication, endpoints, namespace, node)
+- Watches the current state in etcd and makes changes to move towards the desired state
+
+#### Example of Controller Manager
+
+If a Deployment requires 3 pods and only 2 are running, the ReplicaSet controller will create 1 more pod.
+
+### 4. Scheduler (`kube-scheduler`)
+
+- Watches for unscheduled pods (i.e., no assigned node)
+- Selects the best node for the pod based on:
+  - CPU/memory availability
+  - Taints & tolerations
+  - Node affinity
+  - Custom scheduling policies
+
+## Node Components
+
+### 1. kubelet
+
+- An agent running on each node
+- Receives instructions from the API Server
+- Ensures containers are running as specified in PodSpecs
+
+### 2. Container Runtime
+
+- Responsible for running containers
+- Popular choices: containerd, CRI-O, Docker (deprecated in latest versions)
+
+### 3. kube-proxy
+
+- Manages network rules and forwarding on each node
+- Configures networking so the pod is reachable within the cluster
+- Supports:
+  - Services
+  - Load balancing (via `iptables` or `ipvs`)
+
+> Every time a pod is created, the ip table is handled by kube-proxy
+
+---
+
+## CRI (Container Runtime Interface)
+
+CRI stands for Container Runtime Interface, which is a **Kubernetes-defined API** that lets the `kubelet` (agent on each node) talk to the container runtime to:
+
+- Create / manage containers
+- Pull images
+- Manage volumes
+- Handle networking
+
+> CRI acts like an abstraction layer between `kubelet` and container runtimes.
+
+### Workflow of `kubelet` via CRI
+
+kubelet → CRI → containerd → containerd-shim → runc
+
+---
+
+## CNI (Container Network Interface)
+
+CNI stands for Container Network Interface. It's a **standard interface specification** developed by the Cloud Native Computing Foundation (CNCF) that allows different networking solutions (plugins) to integrate with container runtimes (like Kubernetes, containerd, or CRI-O).
+
+- Provisioning and managing an IP address
+- IP-per-container assignment
+
+CNI ensures that when a pod is created:
+
+- It gets a network interface (e.g., eth0).
+- It’s assigned an IP.
+- Routes are added so it can communicate with other pods/services.
+
+> Kubernetes doesn’t handle networking on its own—it delegates it to **CNI plugins** like Flannel, Calico, Weave, etc.
+
+| Feature                  | **Flannel**                                  | **Calico**                                     |
+| ------------------------ | -------------------------------------------- | ---------------------------------------------- |
+| **Type**                 | Overlay network                              | Pure Layer 3 network (no overlay by default)   |
+| **Network Mode**         | VXLAN (default), also supports host-gw       | BGP (default), VXLAN (optional)                |
+| **Performance**          | Moderate (due to encapsulation overhead)     | High (no encapsulation in default mode)        |
+| **Policy Support**       | ❌ Basic or none                             | ✅ Advanced network policy engine              |
+| **Use Case**             | Simpler setups, less need for security rules | Complex clusters with strict security policies |
+| **IPAM (IP Management)** | Basic                                        | Advanced CIDR and IP pool control              |
+| **Firewall Integration** | ❌ Not integrated                            | ✅ Integrates with iptables and eBPF           |
+| **Ease of Setup**        | Very simple to set up                        | Slightly more complex due to policy features   |
 
 ---

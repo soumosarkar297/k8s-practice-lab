@@ -17,11 +17,10 @@ k8s-practice-lab/
 │   └── terraform.tfvars
 ├── scripts/               # Bash setup scripts
 │   ├── kube-install.sh
-│   ├── kube-init-control-plane.sh
-│   └── kube-join-worker.sh
+│   └── kube-init-control-plane.sh
 └── manifests/             # Kubernetes manifests
-    ├── calico.yaml
-    └── nginx-sample.yaml
+    ├── role-binding.yaml
+    └── example-pod.yaml
 ```
 
 ---
@@ -625,7 +624,10 @@ kubelet → CRI → containerd → containerd-shim → runc
 CNI stands for Container Network Interface. It's a **standard interface specification** developed by the Cloud Native Computing Foundation (CNCF) that allows different networking solutions (plugins) to integrate with container runtimes (like Kubernetes, containerd, or CRI-O).
 
 - Provisioning and managing an IP address
-- IP-per-container assignment
+- Assigning an IP address to the pod
+- Setting up virtual Ethernet (veth) pairs between the pod and the host
+- Connecting the pod to the cluster network (often via a bridge or overlay)
+- Ensuring routing and connectivity between pods accros nodes
 
 CNI ensures that when a pod is created:
 
@@ -645,5 +647,36 @@ CNI ensures that when a pod is created:
 | **IPAM (IP Management)** | Basic                                        | Advanced CIDR and IP pool control              |
 | **Firewall Integration** | ❌ Not integrated                            | ✅ Integrates with iptables and eBPF           |
 | **Ease of Setup**        | Very simple to set up                        | Slightly more complex due to policy features   |
+
+### Practical on CNI and Pod Network
+
+```bash
+# In your control-plane
+ip link show
+
+ip netns list
+
+ip netns exec cni-xxx-xxx-xxx-xxx ip link
+```
+
+Use the [`example-pod.yaml`](./manifests/example-pod.yaml) for running two containers in one pod
+
+```bash
+nano multi.yaml
+kubectl apply -f multi.yaml
+
+kubectl get pods -o wide
+```
+
+SSH into the worker node in which the pod is running:
+
+```bash
+# In worker node
+lsns | grep nginx
+lsns -p <PID>
+
+lsns | grep sleep
+lsns -p <PID>
+```
 
 ---

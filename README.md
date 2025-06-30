@@ -349,3 +349,159 @@ CNI ensures that when a pod is created:
 | **Ease of Setup**        | Very simple to set up                        | Slightly more complex due to policy features   |
 
 ---
+
+## Core Concepts Practical
+
+### View your Kubeconfig file
+
+```bash
+kubectl config view
+```
+
+This file (usually located at `~/.kube/config`) tells `kubectl` how to connect to your Kubernetes cluster.
+
+### GVK (Group-Version-Kind) and GVR (Group-Version-Resource)
+
+- GVK identifies the **type of a Kubernetes resource**. GVK is used in object definitions and controller logic.
+- GVR identifies the **API endpoint** used to *access the resource*. GVR is used by API clients and for REST path discovery (`/apis/<group>/<version>/<resources>`).
+
+| Component    | Meaning                                                                        |
+| -----------  | ------------------------------------------------------------------------------ |
+| **Group**    | The API group the resource belongs to (e.g., `apps`, `batch`, `""` for core)   |
+| **Version**  | The version of the API (e.g., `v1`, `v1beta1`)                                 |
+| **Kind**     | The type of object (e.g., `Pod`, `Deployment`, `Service`)                      |
+| **Resource** | The plural name used in the REST API (e.g., `deployments`, `pods`, `services`) |
+
+> Plural of **kind** used for rest calls → calling API endpoints to interact with objects
+
+#### Example of GVK
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+```
+
+- **Group** = apps
+- **Version** = v1
+- **Kind** = Deployment
+
+→ So the **GVK is**: apps/v1, Kind=Deployment
+
+This is used in manifests and controller logic.
+
+#### Example of GVR
+
+For a Deployment:
+
+- **Group** = apps
+- **Version** = v1
+- **Resource** = deployments
+
+→ So **GVR is**: apps/v1, Resource=deployments
+
+### List all available groups in the cluster
+
+```bash
+kubectl api-versions
+```
+
+### Resources & Kinds
+
+- **Resource**: The plural, REST-facing name (e.g., `pods`, `deployments`, `services`).
+- **Kind**: The singular, human-readable name in manifests (e.g., `Pod`, `Deployment`, `Service`).
+
+Example mapping:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+```
+
+→ Group `apps`, Version `v1`, Kind `Deployment`; API Resource is `deployments`
+
+### Discovering Resources
+
+```bash
+kubectl api-resources -o wide
+```
+
+### API Calls (REST Verbs)
+
+Kubernetes supports standard REST actions on resources:
+
+| Verb     | Description                 |
+| -------- | --------------------------- |
+| `GET`    | Read a resource or list     |
+| `POST`   | Create a new resource       |
+| `PUT`    | Update/replace a resource   |
+| `PATCH`  | Modify part of a resource   |
+| `DELETE` | Remove a resource           |
+| `WATCH`  | Stream changes to resources |
+
+---
+
+## Create a New Kubernetes User with Client Certificates
+
+We'll create a new user with a certificate-based authentication method and give them access using RBAC.
+
+### Step 1: Generate a Certificate for the User
+
+```bash
+# Create private key
+openssl genrsa -out supersection.key 2048
+
+# Create a certificate signing request
+openssl req -new -key supersection.key -out supersection.csr -subj "/CN=supersection/O=dev-team"
+
+cat supersection.csr | base64 | tr -d '\n'
+# Paste the output in CertificateSigningRequest
+```
+
+Then `kubectl apply` the [`certificate-signing-request.yaml`](./manifests/certificate-signing-request.yaml)
+
+```bash
+vi csr.yaml
+
+kubectl apply -f csr.yaml
+
+kubectl certificate approve supersection
+
+kubectl get csr supersection -o jsonpath='{.status.certificate}' | base64 --decode > supersection.crt
+```
+
+### Create RBAC Role/Binding for the User
+
+Create a `Role` or `ClusterRole`, and bind the user using `RoleBinding` or `ClusterRoleBinding`.
+
+Now `kubectl apply` the [`role-binding.yaml`](./manifests/role-binding.yaml)
+
+```bash
+vi role-rb.yaml
+
+kubectl apply -f role-rb.yaml
+```
+
+### Configure kubeconfig for the New User
+
+Create a new context in your kubeconfig using this new cert:
+
+```bash
+kubectl config set-credentials supersection --client-certificate=supersection.crt --client-key=supersection.key
+
+kubectl config set-context supersection-context --cluster=kubernetes --namespace=default --user=supersection
+```
+
+### Test Access
+
+Now you can switch between contexts:
+
+```bash
+kubectl config get-contexts
+
+kubectl config use-context supersection-context
+
+kubectl get pods
+kubectl get deploy
+```
+
+---

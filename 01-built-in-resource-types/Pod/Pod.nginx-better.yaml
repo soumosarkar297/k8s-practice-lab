@@ -1,0 +1,32 @@
+# Based on https://github.com/BretFisher/podspec
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-better
+  namespace: 01--pod
+spec:
+  containers:
+    - name: nginx
+      image: cgr.dev/chainguard/nginx:latest
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 8080
+      resources:
+        limits:
+          memory: "50Mi"    # If container uses over 50MB it is killed (OOM)
+        requests:
+          memory: "25Mi"    # Scheduler finds a node where 25MB is available
+          cpu: "250m"       # Scheduler finds a node where 0.25 vCPU is available
+      securityContext:
+        allowPrivilegeEscalation: false  # prevent sudo, etc.
+        privileged: false                # prevent acting like host root
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault   # enable seccomp and the runtimes default profile
+    runAsUser: 1001          # hardcode user to non-root if not set in Dockerfile
+    runAsGroup: 1001         # hardcode group to non-root if not set in Dockerfile
+    runAsNonRoot: true       # hardcode to non-root. Redundant to above if Dockerfile is set USER 1000

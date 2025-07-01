@@ -440,7 +440,7 @@ kubectl certificate approve supersection
 kubectl get csr supersection -o jsonpath='{.status.certificate}' | base64 --decode > supersection.crt
 ```
 
-### Create RBAC Role/Binding for the User
+### Step 2: Create RBAC Role/Binding for the User
 
 Create a `Role` or `ClusterRole`, and bind the user using `RoleBinding` or `ClusterRoleBinding`.
 
@@ -452,7 +452,7 @@ vi role-rb.yaml
 kubectl apply -f role-rb.yaml
 ```
 
-### Configure kubeconfig for the New User
+### Step 3: Configure kubeconfig for the New User
 
 Create a new context in your kubeconfig using this new cert:
 
@@ -462,7 +462,7 @@ kubectl config set-credentials supersection --client-certificate=supersection.cr
 kubectl config set-context supersection-context --cluster=kubernetes --namespace=default --user=supersection
 ```
 
-### Test Access
+### Step 4: Test Access
 
 Now you can switch between contexts:
 
@@ -680,3 +680,82 @@ lsns -p <PID>
 ```
 
 ---
+
+## CSI (Container Storage Interface)
+
+- The Kubernetes implementation of the Container Storage Interface (CSI) has been promoted to GA in the Kubernetes **v1.13 release**.
+
+-
+
+---
+
+## Built-in Kubernetes Resources
+
+### Pod
+
+- A Pod can obtain multiple containers
+- Containers within a pod share networking and storage
+- Init Containers
+- Sidecar containers
+- There are MANY more configurations available:
+  - Listening ports
+  - Health probes
+  - Resource requests/limits
+  - Security Context
+  - Environment variables
+  - Volumes
+  - DNS Policies
+
+---
+
+## `kubectl` Cheetsheet
+
+```bash
+kubectl <VERB> <NOUN> -n <NAMESPACE> -o <FORMAT>
+```
+
+```bash
+echo alias ku='kubectl' >> .bashrc
+source .bashrc
+```
+
+```bash
+kubectl logs <POD_NAME>
+kubectl logs deployment/<DEPLOYMENT_NAME>
+
+kubectl exec -it <POD_NAME> -c <CONTAINER_NAME> -- bash
+kubectl debug -it <POD_NAME> -- image=<DEBUG_IMAGE> -- bash
+
+kubectl port-forward <POD_NAME> <LOCAL_PORT>:<POD_PORT>
+kubectl port-forward svc/<DEPLOYMENT_NAME> <LOCAL_PORT>:<POD_PORT>
+
+kubectl get pods -n <NAMESPACE>
+kubectl get pods -A # (--all-namespaces)
+kubectl get pods -l key=value
+
+kubectl explain <NOUN>.path.to.fields
+kubectl explain pod.spec.containers.image
+```
+
+## `kubectx` and `kubens`
+
+- `kubectx` is a tool to switch between contexts (clusters) on kubectl faster.
+- `kubens` is a tool to switch between Kubernetes namespaces (and configure them for kubectl) easily.
+
+Refer to the [kubectx GitHub Repo](https://github.com/ahmetb/kubectx?tab=readme-ov-file#installation) for installation or use the following in Ubuntu/Debian
+
+```bash
+sudo apt install kubectx
+```
+
+---
+
+### Author
+
+- [Soumo Sarkar](https://www.linkedin.com/in/soumo-sarkar)
+
+### Reference
+
+- [The Kubernetes Course 2025 by @Kubesimplify](https://www.youtube.com/watch?v=EV47Oxwet6Y)
+
+- [Complete Kubernetes Course by @DevOpsDirective](https://www.youtube.com/watch?v=2T86xAtR6Fo)

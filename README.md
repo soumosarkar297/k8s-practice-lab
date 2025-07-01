@@ -706,6 +706,24 @@ lsns -p <PID>
   - Volumes
   - DNS Policies
 
+#### Access port-forward externally via SSH tunnel from your local machine
+
+Port Forwarding in Kubernetes control-plane:
+
+```bash
+kubectl port-forward pod/nginx-pod 8080:80
+```
+
+On your local machine:
+
+```bash
+ssh -i <your-key.pem> ubuntu@<public-ip-control-plane> -L 8080:localhost:8080
+```
+
+Then open: <http://localhost:8080>
+
+This will forward your local port `8080` to the control plane's `localhost:8080`, which in turn is port-forwarded to the pod.
+
 ---
 
 ## `kubectl` Cheetsheet

@@ -169,18 +169,16 @@ This will:
 
 ---
 
-## 🛑 ⚠️ Important: Worker Nodes Should NOT Run These
-
-If you're working on a **worker node**, **DO NOT RUN**:
-
-- `kube-init-control-plane.sh`
-- OR, `kubeadm init`
-
-These are control-plane specific. Worker nodes should follow the section below.
-
----
-
 ## 🧱 Worker Node Setup
+
+> [!Important]
+> Worker Nodes Should NOT Run These
+> If you're working on a **worker node**, **DO NOT RUN**:
+>
+> - `kube-init-control-plane.sh`
+> - OR, `kubeadm init`
+>
+> These are control-plane specific. Worker nodes should follow the section below.
 
 ### Step 1: SSH into Worker Node EC2
 

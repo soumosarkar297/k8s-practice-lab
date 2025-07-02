@@ -172,7 +172,6 @@ This will:
 ## 🧱 Worker Node Setup
 
 > [!Important]
-> Worker Nodes Should NOT Run These
 > If you're working on a **worker node**, **DO NOT RUN**:
 >
 > - `kube-init-control-plane.sh`
